@@ -118,6 +118,46 @@ Two bases were rejected:
   cannot be reached by OTA
   ([#1296](https://github.com/78/xiaozhi-esp32/issues/1296)). Worth revisiting.
 
+## What it's wired to
+
+Keeping the official protocol is the whole point of the base choice: the device
+stays a client of your `xiaozhi.me` agent, so anything you give that agent, it
+can do out loud. There are **two** separate MCP layers, which is confusing
+until you've seen both:
+
+**Device-side**, compiled into this firmware and visible in the boot log:
+
+```
+MCP: Add tool: self.get_device_status
+MCP: Add tool: self.audio_speaker.set_volume
+MCP: Add tool: self.screen.set_brightness
+MCP: Add tool: self.screen.set_theme
+```
+
+That's how "turn the volume down" or "set the brightness to 40" works with no
+app and no reflash — the agent calls back into the device.
+
+**Server-side**, configured in the console under *Configure → Extensions →
+Custom Services → MCP Endpoint*, as `wss://api.xiaozhi.me/mcp/?token=…`. That
+endpoint bridges your agent to an MCP server you host yourself. Mine runs on a
+homelab box and exposes:
+
+| Tool | What it does |
+|---|---|
+| `note_save` / `note_search` | dictate a note, find it later — stored on the homelab, not in anyone's cloud |
+| `calendar_upcoming` / `calendar_create` | "what's on tomorrow", "put a meeting at 3" |
+| `stock_report` | positions and prices on demand |
+| `weather_forecast` | the usual |
+
+So a sentence to a £20 speaker lands in your own infrastructure. None of that
+survives if you flash a firmware that speaks a different protocol — which is
+exactly why [OpenEmbodied's Coze build was rejected](#why-this-base) despite
+having the better board support.
+
+> ⚠️ That endpoint URL embeds a **bearer token**. Anyone holding it can drive
+> your tools. It is not in this repo, it must never be committed, and if a
+> screenshot of your console ever leaves your machine, mask it.
+
 ## Why the faces are not GIFs on the device
 
 The first version embedded the GIFs and used LVGL's GIF decoder. It worked and
