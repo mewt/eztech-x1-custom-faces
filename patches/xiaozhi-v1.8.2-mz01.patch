@@ -1,0 +1,198 @@
+diff --git a/main/CMakeLists.txt b/main/CMakeLists.txt
+index fa3a663..e88cc18 100644
+--- a/main/CMakeLists.txt
++++ b/main/CMakeLists.txt
+@@ -220,6 +220,8 @@ elseif(CONFIG_BOARD_TYPE_DOIT_AI_01_KIT)
+     set(BOARD_TYPE "doit-ai-01-kit")
+ elseif(CONFIG_BOARD_TYPE_DOIT_AI_01_KIT_LCD)
+     set(BOARD_TYPE "doit-ai-01-kit-lcd")
++elseif(CONFIG_BOARD_TYPE_MZ01_C3_LCD)
++    set(BOARD_TYPE "mz01-c3-lcd")
+ elseif(CONFIG_BOARD_TYPE_DOIT_AI_02_KIT_LCD)
+     set(BOARD_TYPE "doit-ai-02-kit-lcd")
+ elseif(CONFIG_BOARD_TYPE_DOIT_AI_C5_KIT_LCD)
+@@ -227,10 +229,15 @@ elseif(CONFIG_BOARD_TYPE_DOIT_AI_C5_KIT_LCD)
+ elseif(CONFIG_BOARD_TYPE_DOIT_AI_SPEAKER)
+     set(BOARD_TYPE "doit-ai-speaker")
+ endif()
++# No CONFIGURE_DEPENDS here: IDF also includes this file in cmake script mode
++# (component_get_requirements.cmake), where that keyword is an error. After
++# adding or deleting a board source, touch this file to force a reconfigure.
+ file(GLOB BOARD_SOURCES
+     ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD_TYPE}/*.cc
+     ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD_TYPE}/*.c
++    ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD_TYPE}/faces/*.c
+ )
++list(APPEND INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD_TYPE}/faces)
+ list(APPEND SOURCES ${BOARD_SOURCES})
+ 
+ if(CONFIG_USE_AUDIO_PROCESSOR)
+diff --git a/main/Kconfig.projbuild b/main/Kconfig.projbuild
+index 6b6bf6e..1883f95 100644
+--- a/main/Kconfig.projbuild
++++ b/main/Kconfig.projbuild
+@@ -308,6 +308,8 @@ choice BOARD_TYPE
+         bool "Doit-AI-01-Kit"
+     config BOARD_TYPE_DOIT_AI_01_KIT_LCD
+         bool "Doit-AI-01-Kit-Lcd"
++    config BOARD_TYPE_MZ01_C3_LCD
++        bool "Zuowei MZ01-C3-LCD (EZTECH X1)"
+     config BOARD_TYPE_DOIT_AI_02_KIT_LCD
+         bool "Doit-AI-02-Kit-Lcd"
+     config BOARD_TYPE_DOIT_AI_C5_KIT_LCD
+@@ -522,13 +524,13 @@ config SPEAKING_FIRST_MUTE_TIME
+         讲话之前静音时间
+ 
+ config USE_AUDIO_CODEC_ENCODE_OPUS
+-    depends on BOARD_TYPE_DOIT_AI_01_KIT || BOARD_TYPE_DOIT_AI_01_KIT_LCD || BOARD_TYPE_DOIT_AI_02_KIT_LCD || BOARD_TYPE_DOIT_AI_C5_KIT_LCD
++    depends on BOARD_TYPE_DOIT_AI_01_KIT || BOARD_TYPE_DOIT_AI_01_KIT_LCD || BOARD_TYPE_DOIT_AI_02_KIT_LCD || BOARD_TYPE_DOIT_AI_C5_KIT_LCD || BOARD_TYPE_MZ01_C3_LCD
+     select USE_CUSTOM_TASK_STACK_SIZE
+     bool "use audio codec encode opus"
+     default y
+ 
+ config USE_AUDIO_CODEC_DECODE_OPUS
+-    depends on BOARD_TYPE_DOIT_AI_01_KIT || BOARD_TYPE_DOIT_AI_01_KIT_LCD || BOARD_TYPE_DOIT_AI_02_KIT_LCD || BOARD_TYPE_DOIT_AI_C5_KIT_LCD
++    depends on BOARD_TYPE_DOIT_AI_01_KIT || BOARD_TYPE_DOIT_AI_01_KIT_LCD || BOARD_TYPE_DOIT_AI_02_KIT_LCD || BOARD_TYPE_DOIT_AI_C5_KIT_LCD || BOARD_TYPE_MZ01_C3_LCD
+     select USE_CUSTOM_TASK_STACK_SIZE
+     bool "use audio codec decode opus"
+     default n
+diff --git a/main/application.cc b/main/application.cc
+index 140e54f..bf9a902 100644
+--- a/main/application.cc
++++ b/main/application.cc
+@@ -846,12 +846,15 @@ void Application::ShowOtaInfo(const std::string& code,const std::string& ip) {
+         auto display = Board::GetInstance().GetDisplay();
+         std::string message;
+         if (ip.empty()) {
+-            message = "浏览器访问\nhttp://vbota.esp32.cn/vbota\n设备码:"+code;
++            message = std::string(Lang::Strings::ACCESS_VIA_BROWSER) +
++                      "\nhttp://vbota.esp32.cn/vbota\n" + Lang::Strings::DEVICE_CODE + code;
+         } else {
+-            message = "浏览器访问\nhttp://vbota.esp32.cn/vbota\n或\nhttp://"+ip+"\n设备码:"+code;
++            message = std::string(Lang::Strings::ACCESS_VIA_BROWSER) +
++                      "\nhttp://vbota.esp32.cn/vbota\nhttp://" + ip + "\n" +
++                      Lang::Strings::DEVICE_CODE + code;
+         }
+-        
+-        display->SetStatus("升级模式");
++
++        display->SetStatus(Lang::Strings::OTA_UPGRADE);
+         display->SetChatMessage("system", message.c_str());
+         PlaySound(Lang::Sounds::P3_START_OTA);
+         for (const auto& digit : code) {
+diff --git a/main/assets/en-US/language.json b/main/assets/en-US/language.json
+index 54ffb0a..58f0e1b 100644
+--- a/main/assets/en-US/language.json
++++ b/main/assets/en-US/language.json
+@@ -11,6 +11,7 @@
+         "INITIALIZING": "Initializing...",
+         "PIN_ERROR": "Please insert SIM card",
+         "REG_ERROR": "Unable to access network, please check SIM card status",
++        "DEVICE_CODE": "Device code: ",
+         "DETECTING_MODULE": "Detecting module...",
+         "REGISTERING_NETWORK": "Waiting for network...",
+         "CHECKING_NEW_VERSION": "Checking for new version...",
+diff --git a/main/assets/ja-JP/language.json b/main/assets/ja-JP/language.json
+index 7cf00cd..bf46035 100644
+--- a/main/assets/ja-JP/language.json
++++ b/main/assets/ja-JP/language.json
+@@ -11,6 +11,7 @@
+         "INITIALIZING": "初期化中...",
+         "PIN_ERROR": "SIMカードを挿入してください",
+         "REG_ERROR": "ネットワークに接続できません。ネットワーク状態を確認してください",
++        "DEVICE_CODE": "デバイスコード:",
+         "DETECTING_MODULE": "モジュールを検出中...",
+         "REGISTERING_NETWORK": "ネットワーク接続待機中...",
+         "CHECKING_NEW_VERSION": "新しいバージョンを確認中...",
+diff --git a/main/assets/zh-CN/language.json b/main/assets/zh-CN/language.json
+index eeb61b4..beab8ab 100644
+--- a/main/assets/zh-CN/language.json
++++ b/main/assets/zh-CN/language.json
+@@ -11,6 +11,7 @@
+         "INITIALIZING":"正在初始化...",
+         "PIN_ERROR":"请插入 SIM 卡",
+         "REG_ERROR":"无法接入网络，请检查流量卡状态",
++        "DEVICE_CODE": "设备码:",
+         "DETECTING_MODULE":"检测模组...",
+         "REGISTERING_NETWORK":"等待网络...",
+         "CHECKING_NEW_VERSION":"检查新版本...",
+diff --git a/main/assets/zh-TW/language.json b/main/assets/zh-TW/language.json
+index 51175a1..ceed7da 100644
+--- a/main/assets/zh-TW/language.json
++++ b/main/assets/zh-TW/language.json
+@@ -11,6 +11,7 @@
+         "INITIALIZING": "正在初始化...",
+         "PIN_ERROR": "請插入 SIM 卡",
+         "REG_ERROR": "無法接入網絡，請檢查網路狀態",
++        "DEVICE_CODE": "裝置碼:",
+         "DETECTING_MODULE": "檢測模組...",
+         "REGISTERING_NETWORK": "等待網絡...",
+         "CHECKING_NEW_VERSION": "檢查新版本...",
+diff --git a/main/display/lcd_display.cc b/main/display/lcd_display.cc
+index c304e08..805a6e3 100644
+--- a/main/display/lcd_display.cc
++++ b/main/display/lcd_display.cc
+@@ -86,7 +86,7 @@ LcdDisplay::LcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handle_
+ 
+ SpiLcdDisplay::SpiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handle_t panel,
+                            int width, int height, int offset_x, int offset_y, bool mirror_x, bool mirror_y, bool swap_xy,
+-                           DisplayFonts fonts)
++                           DisplayFonts fonts, lv_display_rotation_t sw_rotation)
+     : LcdDisplay(panel_io, panel, fonts, width, height) {
+ 
+     // draw white
+@@ -104,7 +104,11 @@ SpiLcdDisplay::SpiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
+ 
+     ESP_LOGI(TAG, "Initialize LVGL port");
+     lvgl_port_cfg_t port_cfg = ESP_LVGL_PORT_INIT_CONFIG();
+-    port_cfg.task_priority = 1;
++    // Priority 1 (equal to app_main) starves the LVGL port task during
++    // lvgl_port_add_disp on single-core targets: the main task blocks on the
++    // port queue while holding the port lock, and the port task never runs
++    // to service it. Raise the port task so it can preempt.
++    port_cfg.task_priority = 4;
+     port_cfg.timer_period_ms = 50;
+     // port_cfg.task_stack = 3328;
+     lvgl_port_init(&port_cfg);
+@@ -129,7 +133,7 @@ SpiLcdDisplay::SpiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
+         .flags = {
+             .buff_dma = 1,
+             .buff_spiram = 0,
+-            .sw_rotate = 0,
++            .sw_rotate = static_cast<unsigned int>(sw_rotation != LV_DISPLAY_ROTATION_0),
+             .swap_bytes = 1,
+             .full_refresh = 0,
+             .direct_mode = 0,
+@@ -142,6 +146,10 @@ SpiLcdDisplay::SpiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
+         return;
+     }
+ 
++    if (sw_rotation != LV_DISPLAY_ROTATION_0) {
++        lv_display_set_rotation(display_, sw_rotation);
++    }
++
+     if (offset_x != 0 || offset_y != 0) {
+         lv_display_set_offset(display_, offset_x, offset_y);
+     }
+diff --git a/main/display/lcd_display.h b/main/display/lcd_display.h
+index 3c6de33..8b07832 100644
+--- a/main/display/lcd_display.h
++++ b/main/display/lcd_display.h
+@@ -80,10 +80,16 @@ public:
+ // // SPI LCD显示器
+ class SpiLcdDisplay : public LcdDisplay {
+ public:
++    // sw_rotation: route rotation through LVGL software rotation instead of
++    // panel MADCTL. Needed for panels whose controller RAM is larger than the
++    // visible window (e.g. 240x240 visible in a 240x320 ST7789), where
++    // MADCTL-based rotation mirrors or wraps the framebuffer.
++    // LV_DISPLAY_ROTATION_0 (default) keeps the MADCTL path used by other boards.
+     SpiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handle_t panel,
+                   int width, int height, int offset_x, int offset_y,
+                   bool mirror_x, bool mirror_y, bool swap_xy,
+-                  DisplayFonts fonts);
++                  DisplayFonts fonts,
++                  lv_display_rotation_t sw_rotation = LV_DISPLAY_ROTATION_0);
+ };
+ 
+ // QSPI LCD显示器

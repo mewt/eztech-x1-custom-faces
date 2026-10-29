@@ -1,0 +1,15 @@
+# Zuowei MZ01-C3-LCD (EZTECH X1) build on top of sdkconfig.defaults{,.esp32c3}
+CONFIG_BOARD_TYPE_MZ01_C3_LCD=y
+
+# VB6824 handles the microphone (opus in) and speaker (PCM out) plus wake word.
+CONFIG_USE_AUDIO_CODEC_ENCODE_OPUS=y
+CONFIG_VB6824_UART_TASK_STACK_SIZE=8192
+CONFIG_VB6824_SEND_USE_TASK=y
+CONFIG_VB6824_SEND_TASK_STACK_SIZE=4096
+CONFIG_ESP_TIMER_TASK_STACK_SIZE=4096
+
+# Animated GIF faces on the 240x240 panel.
+CONFIG_LV_USE_GIF=y
+
+# English UI strings and English voice prompts (assets/en-US) instead of zh-CN.
+CONFIG_LANGUAGE_EN_US=y
