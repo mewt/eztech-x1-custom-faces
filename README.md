@@ -5,6 +5,14 @@ Custom firmware for the little ESP32-C3 XiaoZhi (小智) AI speaker with the rou
 faces**, in **English**, on a **true-black** screen — and still talking to the
 official `xiaozhi.me` cloud, so your agent and its MCP tools keep working.
 
+<p align="center">
+  <img src="docs/device.jpg" width="440" alt="EZTECH X1 running this firmware: an animated face centred on a black screen">
+</p>
+
+<p align="center"><sub>Idle, mid-blink. The blue cast is the backlight, not the
+theme — the UI is being told <code>#000000</code>, and that is as dark as a
+backlit IPS panel gets. Turn the brightness down for a deeper black.</sub></p>
+
 ```
          stock                          this
    ┌─────────────────┐           ┌─────────────────┐
