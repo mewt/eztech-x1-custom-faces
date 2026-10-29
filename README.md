@@ -145,7 +145,7 @@ homelab box and exposes:
 | Tool | What it does |
 |---|---|
 | `note_save` / `note_search` | dictate a note, find it later — stored on the homelab, not in anyone's cloud |
-| `calendar_upcoming` / `calendar_create` | "what's on tomorrow", "put a meeting at 3" |
+| `calendar_upcoming` | "what's on tomorrow" — **read-only**; creating events is not wired up yet |
 | `stock_report` | positions and prices on demand |
 | `weather_forecast` | the usual |
 
